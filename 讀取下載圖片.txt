@@ -1,0 +1,74 @@
+
+//post 
+export const Post_pic = (e)=> instance.post('/Home/test/color_image',e,{responseType:'blob'});
+async function post_img(id, region, e) {
+  let res = await Post_pic({ ID: id, name: region, Direction: e })
+  let blob = new Blob([res.data],{type: "image/jpg"});
+  let url = window.URL.createObjectURL(blob);
+  a1.value = url;
+}
+
+
+//get 
+async function get_img(id, region, e) {
+  img_time_1.value = ''
+  url_1.value = ''
+  if (region === '不存在') {
+    return
+  }
+  //圖片時間
+  let res = await Get_time({ Coil_ID: id, name: region, num: '1' })
+  if (res.data.length !== 0) {
+    img_time_1.value = dayjs(res.data[0].time).format('YYYY-MM-DD HH:mm:ss')
+  }
+  url_1.value = `http://10.20.121.123:62323/Home/color_image?ID=${id}&name=${region}&Direction=${e}`
+}
+
+
+//後端 get /post 都可以共用
+  [HttpGet("/Home/color_image")]
+        public object 彩色圖片([FromQuery] 彩色圖片 request)
+        {
+            try
+            {
+                string result = (request.name == "5_Color_Graph") ? "5DC-CCD-Data" :
+                                (request.name == "4_Color_Graph") ? "4DC-CCD-Data" :
+                                (request.name == "3_Color_Graph") ? "3DC-CCD-Data" : "";
+
+                using var cn = new SqlConnection(_configuration.GetConnectionString("main"));
+                var sql = Pic.彩色圖片_回傳;
+                var parameters = new DynamicParameters();
+                parameters.Add("num1", request.ID, System.Data.DbType.String);
+                parameters.Add("num2", request.Direction, System.Data.DbType.String);
+                parameters.Add("num3", result, System.Data.DbType.String);
+                var data = cn.Query<南北回傳>(string.Format(sql, request.name), parameters).ToList();
+                var bytes = NetFileGet("192.168.4.248", data[0].Graph_Path.ToString(), "icsc", "Pa$$w0rd");
+                return File(bytes, "image/jpg");
+
+            }
+            catch (Exception ex)
+            {
+                string imagePath = "dog.jpg";
+                string webRootPath = _env.WebRootPath;
+                string imagePathFull = Path.Combine(webRootPath, imagePath);
+                byte[] imageBytes = System.IO.File.ReadAllBytes(imagePathFull);
+                return File(imageBytes, "image/jpeg");
+            }
+        }
+
+
+//--------------------------- 下載圖片
+function down(url, name, time, r) {
+  fetch(url)
+    .then((response) => response.blob())
+    .then((blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${time} ${region.value} ${name} ${r}.jpg`;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
+}
